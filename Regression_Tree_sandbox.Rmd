@@ -50,6 +50,7 @@ run prediction on the test data, find the mean absolute error from original data
 library(Metrics)
 p1 <- predict(m1, test_data)
 head(p1)
+plot(p1, residuals(m2))
 
 mse(test_data$target, p1)
 rmse(test_data$target, p1)
