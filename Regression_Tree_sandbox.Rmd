@@ -5,60 +5,90 @@ date: "May 13, 2018"
 output: html_document
 ---
 
-A basic regression tree was used on this data set to predict default, which partitions the data into smaller groups that are more homogenous with respect to the response. 
-```{r}
-
-cc_data <- read.csv("https://raw.githubusercontent.com/621-Group2/Final-Project/master/UCI_Credit_Card.csv", header = TRUE)
-
-train_data <- read.csv("https://raw.githubusercontent.com/621-Group2/Final-Project/master/trainData.csv", header = TRUE)
-test_data <- read.csv("https://raw.githubusercontent.com/621-Group2/Final-Project/master/testData.csv", header = TRUE)
-
-
-
-head(cc_data)
-nrow(cc_data)
-head(train_data)
-nrow(train_data)
-head(test_data)
-nrow(test_data)
-```
-
+A basic regression tree was used on this data set to predict default, which partitions the data into smaller groups that are more homogenous with respect to the response. The data were split into training and test sets at a 70:30 ratio.
 ```{r}
 library(rpart)
 library(rpart.plot)
+library(Metrics)
+
+#cc_data <- read.csv("https://raw.githubusercontent.com/621-Group2/Final-Project/master/UCI_Credit_Card.csv", header = TRUE)
+
+train_data <- read.csv("https://raw.githubusercontent.com/621-Group2/Final-Project/master/trainData.csv", header = TRUE)
+
+test_data <- read.csv("https://raw.githubusercontent.com/621-Group2/Final-Project/master/testData.csv", header = TRUE)
+
+```
+
+###Grow Tree
+
+```{r}
+
 # grow tree
 m1 <- rpart(target ~ .,  data = train_data, method = 'anova')
-print(m1)
+m1
+
+```
+
+#### Plot and summarize
+
+```{r}
 # additional plots
 par(mfrow=c(1,2)) 
 rsq.rpart(m1)
 ```
 
+The relative error is $1-R^2$, similar to linear regression. The xerror is related to the  [PRESS](https://en.wikipedia.org/wiki/PRESS_statistic) statistic. The split from 0 to 1 appears to have the largest improvement of fit. The split from 1 to 2 is much less of an improvement.
+
+The figure to the left shows a visual of the aforementioned first split providing more information than the second split. The figure to the right shows if a tree should be pruned, and in our case it does not. 
 ```{r}
-#printcp(m1) # display the results
 plotcp(m1) # visualize cross-validation results
-summary(m1) # detailed summary of splits
+
 ```
 
+Looking at the `plotcp` function we can take a look and see if the tree needs pruning, and we can see 3 nodes appears to be the ideal size.
+
 ```{r}
-rpart.plot(m1, type=3, digits=3, fallen.leaves=TRUE)
+summary(m1, cp = 0.1) # detailed summary of splits
 ```
 
+Turning to the summary, the first split partitions the 20998 observations into groups of 18789 and 2209 (nodes 2 and 3) with mean values of 0.167 and 0.698, respectively. Variables `PAY_0` and `PAY_2` are weighted highest in importance.
 
-run prediction on the test data, find the mean absolute error from original data set to predictions
 ```{r}
-library(Metrics)
+plot(predict(m1), jitter(resid(m1)))
+temp <- m1$frame[m1$frame$var == '<leaf>',]
+axis(3, at = temp$yval, as.character(row.names(temp)))
+mtext('leaf number', side = 3, line = 3)
+abline(h = 0, lty = 2)
+```
+
+A residual plot of predicted values vs. residuals shows 
+
+```{r}
+rpart.plot(m1, type=3, digits=3, fallen.leaves=TRUE, main='Regression Tree for Credit Card Defaults')
+```
+
+Lastly in the plotting section is a visual of the regression tree. The model tells us that if $PAY_-0\geq 1.5$, there is a 69.8% chance the customer will default. Approx 10.5% of the data set falls under this threshold. On the other hand if $PAY_-0< 1.5$, the model takes a look at the customers $`PAY_-2$ scores. If $PAY_-2\geq1.5$ there is a 41.6% chance the customer will default, which comprises of 7.5% of the dataset. Lastly if $PAY_-2<1.5$ there is only a 14.5% chacne of default, which 81.9% of the data set falls under.
+
+
+###Predict
+We run prediction on the test data, find the mean absolute error from original data set to predictions and obtain an $MSE$ of 0.139.
+```{r}
+
 p1 <- predict(m1, test_data)
-head(p1)
-plot(p1, residuals(m2))
 
+#confMat <- table(test_data$target, p1)
+#accuracy <- sum(diag(confMat))/sum(confMat)
+#accuracy
+#
 mse(test_data$target, p1)
-rmse(test_data$target, p1)
-mae(test_data$target, p1)
-sse(test_data$target, p1)
+#rmse(test_data$target, p1)
+#mae(test_data$target, p1)
+#se(test_data$target, p1)
 
 
 ```
+
+
 
 
 
